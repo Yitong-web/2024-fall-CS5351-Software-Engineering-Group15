@@ -16,6 +16,7 @@ import com.taobao.middleware.cli.annotations.Description;
 import com.taobao.middleware.cli.annotations.Name;
 import com.taobao.middleware.cli.annotations.Option;
 import com.taobao.middleware.cli.annotations.Summary;
+import com.taobao.arthas.core.util.AnalysisUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -51,6 +52,22 @@ public class TraceCommand extends EnhancerCommand {
     private int numberOfLimit = 100;
     private List<String> pathPatterns;
     private boolean skipJDKTrace;
+    
+    private int analysisLen = 0;
+
+    @Option(shortName="L",longName="analysisLen")
+    @Description("the length of analysis time")
+    public void setAnalysisLen(int setLen){
+        if (setLen < 0) {
+            throw new IllegalArgumentException("analysisLen must be greater than or equal to 0.");
+        }
+
+        this.analysisLen = setLen;
+    }
+
+    public int getAnalysisLen(){
+        return analysisLen;
+    }
 
     @Argument(argName = "class-pattern", index = 0)
     @Description("Class name pattern, use either '.' or '/' as separator")
