@@ -13,7 +13,7 @@ import java.lang.reflect.Method;
 import java.util.*;
 
 /**
- * 
+ *
  * @author hengyunabc 2015年12月7日 下午2:29:28
  *
  */
@@ -69,7 +69,7 @@ abstract public class ThreadUtil {
 
     /**
      * 获取所有线程List
-     * 
+     *
      * @return
      */
     public static List<Thread> getThreadList() {
@@ -495,5 +495,55 @@ abstract public class ThreadUtil {
             // ignore
         }
     }
+    /**
+     *
+     *
+     * @param interval
+     * @return
+     */
+    public static List<ThreadInfo> getBlockedThreads (long interval){
+        ArrayList<ThreadInfo> blockedThreads = new ArrayList<>();
+        Map<Long, LockInfo> threadAndBlockingLock = new HashMap<>();
 
+        //
+        List<ThreadVO> threads = ThreadUtil.getThreads();
+        //mainid
+        List<Long> mainThreadIds = new ArrayList<>();
+
+        for(ThreadVO threadVO : threads) {
+            if(threadVO.getGroup().equals("main")) {
+                mainThreadIds.add(threadVO.getId());
+            }
+        }
+
+        //
+        ThreadInfo[]  infos = threadMXBean.dumpAllThreads (threadMXBean.isObjectMonitorUsageSupported(), threadMXBean.isSynchronizerUsageSupported());
+        for (ThreadInfo threadInfo :infos) {
+            LockInfo lockInfo = threadInfo.getLockInfo();
+            long threadId = threadInfo.getThreadId();
+            // && main
+            if (lockInfo != null && mainThreadIds.contains(threadId)) {
+                threadAndBlockingLock.put(threadId, lockInfo);
+            }
+        }
+        //interval
+        try {
+            Thread.sleep(interval);
+        } catch (InterruptedException e) {
+            //ignore
+        }
+
+        ThreadInfo[]  infosAfterInterval = threadMXBean.dumpAllThreads (threadMXBean.isObjectMonitorUsageSupported(),threadMXBean.isSynchronizerUsageSupported());
+        for (ThreadInfo threadInfo : infosAfterInterval) {
+            long threadId = threadInfo.getThreadId();
+            LockInfo currentLockInfo = threadInfo.getLockInfo();
+            if (threadAndBlockingLock.containsKey(threadId)  && currentLockInfo != null) {
+                LockInfo previousLock = threadAndBlockingLock.get (threadId) ;
+                if (previousLock.getIdentityHashCode() == currentLockInfo.getIdentityHashCode()) {
+                    blockedThreads.add(threadInfo);
+                }
+            }
+        }
+        return blockedThreads;
+    }
 }
