@@ -1,16 +1,15 @@
 package com.taobao.arthas.core.util;
 
-import com.taobao.arthas.core.command.model.BlockingLockInfo;
-import com.taobao.arthas.core.command.model.BusyThreadInfo;
-import com.taobao.arthas.core.command.model.StackModel;
-import com.taobao.arthas.core.command.model.ThreadNode;
-import com.taobao.arthas.core.command.model.ThreadVO;
+import com.taobao.arthas.core.command.model.*;
 import com.taobao.arthas.core.view.Ansi;
 
 import java.arthas.SpyAPI;
 import java.lang.management.*;
 import java.lang.reflect.Method;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  *
@@ -496,6 +495,7 @@ abstract public class ThreadUtil {
         }
     }
     /**
+
      *
      *
      * @param interval
@@ -547,3 +547,49 @@ abstract public class ThreadUtil {
         return blockedThreads;
     }
 }
+
+     * 检测系统中是否存在死锁情况
+     * 死锁是指两个或两个以上的进程在执行过程中，由于竞争资源或者由于彼此通信而造成的一种阻塞的现象，若无外力作用，它们都将无法推进下去
+     *
+     * @return DeadlockInfo对象，包含死锁相关信息如果系统中没有发现死锁，返回一个空的DeadlockInfo对象
+     */
+    public static DeadlockInfo detectDeadlock(){
+        // 初始化一个空的死锁信息对象，用于后续收集死锁相关信息
+        DeadlockInfo deadlockInfo = new DeadlockInfo();
+
+        // 获取系统中所有死锁线程的ID数组如果没有死锁线程，此方法将返回null
+        long[] ids = threadMXBean.findDeadlockedThreads();
+
+        // 如果没有死锁线程，直接返回空的死锁信息对象
+        if(ids == null){
+            return deadlockInfo;
+        }
+
+        // 获取死锁线程的详细信息，包括是否支持对象监视器和同步器的使用情况
+        ThreadInfo[] threads = threadMXBean.getThreadInfo(ids,
+                threadMXBean.isObjectMonitorUsageSupported(),threadMXBean.isSynchronizerUsageSupported());
+
+        // 遍历每个死锁线程的信息
+        for(ThreadInfo threadInfo : threads){
+            // 获取当前线程持有的锁的信息
+            LockInfo lockInfo = threadInfo.getLockInfo();
+
+            // 如果当前线程持有的锁在死锁信息中尚未记录，则将当前线程信息添加到死锁信息中
+            if(!deadlockInfo.getOwnerThreadPerLock().containsKey(lockInfo.getIdentityHashCode())){
+                deadlockInfo.getThreads().add(threadInfo);
+            }
+
+            // 遍历当前线程持有的所有监视器锁，将每个锁及其持有线程的信息添加到死锁信息中
+            for (MonitorInfo monitorInfo : threadInfo.getLockedMonitors()) {
+                deadlockInfo.getOwnerThreadPerLock().putIfAbsent(monitorInfo.getIdentityHashCode(), threadInfo);
+            }
+
+            // 遍历当前线程持有的所有同步器锁，将每个锁及其持有线程的信息添加到死锁信息中
+            for (LockInfo lockedSync : threadInfo.getLockedSynchronizers()) {
+                deadlockInfo.getOwnerThreadPerLock().putIfAbsent(lockedSync.getIdentityHashCode(), threadInfo);
+            }
+        }
+
+        // 返回收集到的死锁信息
+        return deadlockInfo;
+    }

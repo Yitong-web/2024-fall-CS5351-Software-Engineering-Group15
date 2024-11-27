@@ -3,6 +3,7 @@ package com.taobao.arthas.core.command.view;
 import com.taobao.arthas.core.command.model.BusyThreadInfo;
 import com.taobao.arthas.core.command.model.ThreadModel;
 import com.taobao.arthas.core.command.model.ThreadVO;
+import com.taobao.arthas.core.command.monitor200.ThreadCommand;
 import com.taobao.arthas.core.shell.command.CommandProcess;
 import com.taobao.arthas.core.util.ThreadUtil;
 import com.taobao.text.ui.LabelElement;
@@ -31,10 +32,12 @@ public class ThreadView extends ResultView<ThreadModel> {
                 String stacktrace = ThreadUtil.getFullStacktrace(info, -1, -1);
                 process.write(stacktrace).write("\n");
             }
+            //如果存在死锁信息则控制台打印
+        }else if (result.getDeadlockInfo() != null){
+            process.write(ThreadCommand.render(result.getDeadlockInfo()));
         } else if (result.getBlockingLockInfo() != null) {
             String stacktrace = ThreadUtil.getFullStacktrace(result.getBlockingLockInfo());
             process.write(stacktrace);
-
         } else if (result.getThreadStateCount() != null) {
             Map<Thread.State, Integer> threadStateCount = result.getThreadStateCount();
             List<ThreadVO> threadStats = result.getThreadStats();
