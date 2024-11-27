@@ -26,8 +26,18 @@ public class ThreadModel extends ResultModel {
     private boolean all;
     private DeadlockInfo deadlockInfo;
 
+
+    // deadlock thread info list
+    private List<ThreadInfo> deadlockThreadInfoList;
+
+    // blocked thread list
+    private List<ThreadInfo> blockedThreadList;
+
+    public ThreadModel() {
+
     public ThreadModel(DeadlockInfo deadlockInfo) {
         this.deadlockInfo = deadlockInfo;
+
     }
 
     public ThreadModel(ThreadInfo threadInfo) {
@@ -99,6 +109,24 @@ public class ThreadModel extends ResultModel {
 
     public void setThreadStateCount(Map<Thread.State, Integer> threadStateCount) {
         this.threadStateCount = threadStateCount;
+    }
+
+    private ThreadModel(List<ThreadInfo> deadlockThreadInfoList, List<BusyThreadInfo> busyThreads, List<ThreadInfo> blockedThreadList) {
+        this.deadlockThreadInfoList = deadlockThreadInfoList;
+        this.busyThreads  = busyThreads;
+        this.blockedThreadList = blockedThreadList;
+    }
+
+    public static ThreadModel withDeadlockThreadInfoList(List<ThreadInfo> deadlockThreadInfoList) {
+        return new ThreadModel(deadlockThreadInfoList, null, null);
+    }
+
+    public static ThreadModel withThreadBusyThreads(List<BusyThreadInfo> busyThreads) {
+        return new ThreadModel(null, busyThreads, null);
+    }
+
+    public static ThreadModel withBlockedThreads(List<ThreadInfo> blockedThreadList) {
+        return new ThreadModel(null, null, blockedThreadList);
     }
 
     public boolean isAll() {

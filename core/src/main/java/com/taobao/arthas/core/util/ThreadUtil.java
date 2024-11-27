@@ -495,6 +495,59 @@ abstract public class ThreadUtil {
         }
     }
     /**
+
+     *
+     *
+     * @param interval
+     * @return
+     */
+    public static List<ThreadInfo> getBlockedThreads (long interval){
+        ArrayList<ThreadInfo> blockedThreads = new ArrayList<>();
+        Map<Long, LockInfo> threadAndBlockingLock = new HashMap<>();
+
+        //
+        List<ThreadVO> threads = ThreadUtil.getThreads();
+        //mainid
+        List<Long> mainThreadIds = new ArrayList<>();
+
+        for(ThreadVO threadVO : threads) {
+            if(threadVO.getGroup().equals("main")) {
+                mainThreadIds.add(threadVO.getId());
+            }
+        }
+
+        //
+        ThreadInfo[]  infos = threadMXBean.dumpAllThreads (threadMXBean.isObjectMonitorUsageSupported(), threadMXBean.isSynchronizerUsageSupported());
+        for (ThreadInfo threadInfo :infos) {
+            LockInfo lockInfo = threadInfo.getLockInfo();
+            long threadId = threadInfo.getThreadId();
+            // && main
+            if (lockInfo != null && mainThreadIds.contains(threadId)) {
+                threadAndBlockingLock.put(threadId, lockInfo);
+            }
+        }
+        //interval
+        try {
+            Thread.sleep(interval);
+        } catch (InterruptedException e) {
+            //ignore
+        }
+
+        ThreadInfo[]  infosAfterInterval = threadMXBean.dumpAllThreads (threadMXBean.isObjectMonitorUsageSupported(),threadMXBean.isSynchronizerUsageSupported());
+        for (ThreadInfo threadInfo : infosAfterInterval) {
+            long threadId = threadInfo.getThreadId();
+            LockInfo currentLockInfo = threadInfo.getLockInfo();
+            if (threadAndBlockingLock.containsKey(threadId)  && currentLockInfo != null) {
+                LockInfo previousLock = threadAndBlockingLock.get (threadId) ;
+                if (previousLock.getIdentityHashCode() == currentLockInfo.getIdentityHashCode()) {
+                    blockedThreads.add(threadInfo);
+                }
+            }
+        }
+        return blockedThreads;
+    }
+}
+
      * 检测系统中是否存在死锁情况
      * 死锁是指两个或两个以上的进程在执行过程中，由于竞争资源或者由于彼此通信而造成的一种阻塞的现象，若无外力作用，它们都将无法推进下去
      *
@@ -540,5 +593,3 @@ abstract public class ThreadUtil {
         // 返回收集到的死锁信息
         return deadlockInfo;
     }
-
-}

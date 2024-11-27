@@ -40,6 +40,7 @@ public class ThreadCommand extends AnnotatedCommand {
     private Integer topNBusy = null;
     private boolean findMostBlockingThread = false;
     private int sampleInterval = 200;
+    private long blockSampleInterval = 100;
     private String state;
 
     private boolean lockedMonitors = false;
@@ -114,22 +115,35 @@ public class ThreadCommand extends AnnotatedCommand {
     }
 
     @Override
-    public void process(CommandProcess process) {
+    public void process(CommandProcess process)  {
         ExitStatus exitStatus;
         if (id > 0) {
+            //thread + 线程ID
             exitStatus = processThread(process);
         } else if (topNBusy != null) {
             exitStatus = processTopBusyThreads(process);
         } else if (findMostBlockingThread) {
             exitStatus = processBlockingThread(process);
+
+        } else if(blockSampleInterval != 0) {
+            exitStatus = processLockedThreads(process);
         }else if (deadlock){
             exitStatus = processDeadlockThread(process);
         } else {
+
             exitStatus = processAllThreads(process);
         }
         CommandUtils.end(process, exitStatus);
     }
 
+    private ExitStatus processLockedThreads(CommandProcess process) {
+        List<ThreadInfo> blockedThreads = ThreadUtil.getBlockedThreads(blockSampleInterval);
+        if(blockedThreads.isEmpty()){
+            return ExitStatus.failure( 1, "No blocked threads found!");
+        }
+        process.appendResult(ThreadModel.withBlockedThreads(blockedThreads));
+        return ExitStatus.success();
+    }
     private ExitStatus processAllThreads(CommandProcess process) {
         List<ThreadVO> threads = ThreadUtil.getThreads();
 
