@@ -24,8 +24,10 @@ public class ThreadModel extends ResultModel {
     private List<ThreadVO> threadStats;
     private Map<Thread.State, Integer> threadStateCount;
     private boolean all;
+    private DeadlockInfo deadlockInfo;
 
-    public ThreadModel() {
+    public ThreadModel(DeadlockInfo deadlockInfo) {
+        this.deadlockInfo = deadlockInfo;
     }
 
     public ThreadModel(ThreadInfo threadInfo) {
@@ -65,6 +67,14 @@ public class ThreadModel extends ResultModel {
 
     public void setBlockingLockInfo(BlockingLockInfo blockingLockInfo) {
         this.blockingLockInfo = blockingLockInfo;
+    }
+
+    public DeadlockInfo getDeadlockInfo() {
+        return deadlockInfo;
+    }
+
+    public void setDeadlockInfo(DeadlockInfo deadlockInfo) {
+        this.deadlockInfo = deadlockInfo;
     }
 
     public List<BusyThreadInfo> getBusyThreads() {
