@@ -1,7 +1,10 @@
 package com.taobao.arthas.core.command.monitor200;
 
 import com.taobao.arthas.core.command.Constants;
-import com.taobao.arthas.core.command.model.*;
+import com.taobao.arthas.core.command.model.BlockingLockInfo;
+import com.taobao.arthas.core.command.model.BusyThreadInfo;
+import com.taobao.arthas.core.command.model.ThreadModel;
+import com.taobao.arthas.core.command.model.ThreadVO;
 import com.taobao.arthas.core.shell.command.AnnotatedCommand;
 import com.taobao.arthas.core.shell.command.CommandProcess;
 import com.taobao.arthas.core.shell.command.ExitStatus;
@@ -9,14 +12,24 @@ import com.taobao.arthas.core.util.ArrayUtils;
 import com.taobao.arthas.core.util.CommandUtils;
 import com.taobao.arthas.core.util.StringUtils;
 import com.taobao.arthas.core.util.ThreadUtil;
-import com.taobao.middleware.cli.annotations.*;
+import com.taobao.middleware.cli.annotations.Argument;
+import com.taobao.middleware.cli.annotations.Description;
+import com.taobao.middleware.cli.annotations.Name;
+import com.taobao.middleware.cli.annotations.Option;
+import com.taobao.middleware.cli.annotations.Summary;
 
 import java.lang.Thread.State;
-import java.lang.management.LockInfo;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadInfo;
 import java.lang.management.ThreadMXBean;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 
 /**
  * @author hengyunabc 2015年12月7日 下午2:06:21
@@ -47,13 +60,21 @@ public class ThreadCommand extends AnnotatedCommand {
     private boolean lockedSynchronizers = false;
     private boolean all = false;
 
-    private boolean deadlock = false;
-
     static {
         states = new HashSet<String>(State.values().length);
         for (State state : State.values()) {
             states.add(state.name());
         }
+    }
+
+    /**
+     * 检测被阻塞线程指令
+     * @param blockSampleInterval
+     */
+    @Option(shortName = "l", longName = "all-locked-threads")
+    @Description("Show all continuously blocked threads in self-defined time interval")
+    public void setFindBlockedThreads(long blockSampleInterval)  {
+        this.blockSampleInterval = blockSampleInterval;
     }
 
     @Argument(index = 0, required = false, argName = "id")
@@ -66,16 +87,6 @@ public class ThreadCommand extends AnnotatedCommand {
     @Description("Display all thread results instead of the first page")
     public void setAll(boolean all) {
         this.all = all;
-    }
-
-    /**
-     * 添加控制台死锁信息输出指令
-     * @param deadlock
-     */
-    @Option(shortName = "d", longName = "deadlock", flag = true)
-    @Description("Display all thread results instead of the first page")
-    public void setDeadlock(boolean deadlock) {
-        this.deadlock = deadlock;
     }
 
     @Option(shortName = "n", longName = "top-n-threads")
@@ -115,7 +126,7 @@ public class ThreadCommand extends AnnotatedCommand {
     }
 
     @Override
-    public void process(CommandProcess process)  {
+    public void process(CommandProcess process) throws InterruptedException {
         ExitStatus exitStatus;
         if (id > 0) {
             //thread + 线程ID
@@ -124,19 +135,15 @@ public class ThreadCommand extends AnnotatedCommand {
             exitStatus = processTopBusyThreads(process);
         } else if (findMostBlockingThread) {
             exitStatus = processBlockingThread(process);
-
         } else if(blockSampleInterval != 0) {
             exitStatus = processLockedThreads(process);
-        }else if (deadlock){
-            exitStatus = processDeadlockThread(process);
-        } else {
-
+        }else {
             exitStatus = processAllThreads(process);
         }
         CommandUtils.end(process, exitStatus);
     }
 
-    private ExitStatus processLockedThreads(CommandProcess process) {
+    private ExitStatus processLockedThreads(CommandProcess process) throws InterruptedException {
         List<ThreadInfo> blockedThreads = ThreadUtil.getBlockedThreads(blockSampleInterval);
         if(blockedThreads.isEmpty()){
             return ExitStatus.failure( 1, "No blocked threads found!");
@@ -144,6 +151,7 @@ public class ThreadCommand extends AnnotatedCommand {
         process.appendResult(ThreadModel.withBlockedThreads(blockedThreads));
         return ExitStatus.success();
     }
+
     private ExitStatus processAllThreads(CommandProcess process) {
         List<ThreadVO> threads = ThreadUtil.getThreads();
 
@@ -195,50 +203,6 @@ public class ThreadCommand extends AnnotatedCommand {
         }
         process.appendResult(new ThreadModel(blockingLockInfo));
         return ExitStatus.success();
-    }
-
-    private ExitStatus processDeadlockThread(CommandProcess process) {
-        DeadlockInfo deadlockInfo = ThreadUtil.detectDeadlock();
-        if (deadlockInfo.getThreads().size() == 0) {
-            return ExitStatus.failure(1, "No deadlocks found!");
-        }
-        process.appendResult(new ThreadModel(deadlockInfo));
-        return ExitStatus.success();
-    }
-
-    public static String render(DeadlockInfo deadlock){
-        Map<Integer, ThreadInfo> ownerThreadPerLock = deadlock.getOwnerThreadPerLock();
-        StringBuilder sb = new StringBuilder();
-        for(ThreadInfo thread : deadlock.getThreads()){
-            LockInfo waitingToLockInfo;
-            ThreadInfo currentThread = thread;
-            sb.append("Found one Java-level deadlock:\n");
-            sb.append("=============================\n");
-            do{
-                sb.append(currentThread.getThreadName() + "(" + currentThread.getThreadId() + "):\n");
-                waitingToLockInfo = currentThread.getLockInfo();
-                if(waitingToLockInfo != null){
-                    sb.append("  waiting to lock info @" + waitingToLockInfo + ",\n");
-                    sb.append("  which is held by ");
-                    currentThread = ownerThreadPerLock.get(waitingToLockInfo.getIdentityHashCode());
-                    sb.append(currentThread.getThreadName() + "\n");
-                }
-            }while (!currentThread.equals(thread));
-            sb.append("\n");
-        }
-        int numberOfDeadlocks = deadlock.getThreads().size();
-        switch (numberOfDeadlocks) {
-            case 0:
-                sb.append("No deadlocks found.\n");
-                break;
-            case 1:
-                sb.append("Found a total of 1 deadlock.\n");
-                break;
-            default:
-                sb.append("Found a total of " + numberOfDeadlocks + " deadlocks.\n");
-                break;
-        }
-        return sb.toString();
     }
 
     private ExitStatus processTopBusyThreads(CommandProcess process) {
