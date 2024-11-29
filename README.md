@@ -14,7 +14,7 @@
 
 Arthas allows developers to troubleshoot production issuees for Java applications without modifying code or restarting servers.
 
-[English Documentation](README_EN.md)
+[Chinese Documentation](README_CN.md)
 
 ### Background
 
