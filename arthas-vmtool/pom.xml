@@ -127,7 +127,7 @@
                                     <className>arthas.VmTool</className>
                                 </javahInclude>
                             </javahIncludes>
-                            <javahOS>${os_name}</javahOS>
+                            <javahOS>linux</javahOS>
                             <sources>
                                 <source>
                                     <directory>src/main/native/src</directory>
@@ -136,6 +136,13 @@
                                     </fileNames>
                                 </source>
                             </sources>
+                            <includes>
+                                <include>/usr/lib/jvm/java-8-openjdk-amd64/include/</include>
+                                <include>/usr/lib/jvm/java-8-openjdk-amd64/include/linux</include>
+                                <include>target/native/javah</include> <!-- For arthas_VmTool.h -->
+                            </includes>
+
+
 
                             <compilerProvider>generic-classic</compilerProvider>
                             <compilerExecutable>g++</compilerExecutable>

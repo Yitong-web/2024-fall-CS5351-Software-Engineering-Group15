@@ -8,6 +8,9 @@ import com.taobao.arthas.core.advisor.ArthasMethod;
 import com.taobao.arthas.core.shell.command.CommandProcess;
 import com.taobao.arthas.core.util.LogUtil;
 import com.taobao.arthas.core.util.ThreadLocalWatch;
+import com.taobao.arthas.core.util.AnalysisUtils;
+
+import java.util.List;
 
 /**
  * @author ralf0131 2017-01-06 16:02.
@@ -91,6 +94,26 @@ public class AbstractTraceAdviceListener extends AdviceListenerAdapter {
                 if (this.isVerbose()) {
                     process.write("Condition express: " + command.getConditionExpress() + " , result: " + conditionResult + "\n");
                 }
+                
+                //加在com.taobao.arthas.core.command.monitor200.AbstractTraceAdviceListener#finishing原逻辑if (conditionResult) {}前面
+
+                if(command.getAnalysisLen() >= 1){
+    
+                  List<String> stringRusults = AnalysisUtils.analysis(command.getAnalysisLen(),process.args(),command,traceEntity);
+
+                  String traceOneMethod = "";
+    
+                  for(int i=2;i<stringRusults.size();i++){
+                    traceOneMethod+=stringRusults.get(i);
+                  }
+
+                  process.end(1, "the longest "+command.getAnalysisLen()+" method is "+stringRusults.get(0)
+                  +" and you can use this command to get more info:\n"+stringRusults.get(1)
+                  +"\n"+traceOneMethod);
+
+                  }
+
+                
                 if (conditionResult) {
                     // 满足输出条件
                     process.times().incrementAndGet();
