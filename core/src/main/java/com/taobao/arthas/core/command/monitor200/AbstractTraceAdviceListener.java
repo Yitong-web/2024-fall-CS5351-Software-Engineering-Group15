@@ -95,7 +95,6 @@ public class AbstractTraceAdviceListener extends AdviceListenerAdapter {
                     process.write("Condition express: " + command.getConditionExpress() + " , result: " + conditionResult + "\n");
                 }
                 
-                //加在com.taobao.arthas.core.command.monitor200.AbstractTraceAdviceListener#finishing原逻辑if (conditionResult) {}前面
 
                 if(command.getAnalysisLen() >= 1){
     

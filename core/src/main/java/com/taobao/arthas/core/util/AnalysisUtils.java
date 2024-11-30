@@ -80,12 +80,6 @@ public class AnalysisUtils {
             oneTraceMethod += " you can use this command: \n"+"trace "+methodAnalysis.getClassName()+" "+methodAnalysis.getMethodName()+" -n 5\n";
             stringRusult.add(oneTraceMethod);
         }
-
-        //调试debug
-//        String de = "";
-//        de = JSONObject.toJSONString(methodList);
-//        stringRusult.add(de);
-
         return stringRusult;
     }
 

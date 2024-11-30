@@ -24,6 +24,7 @@ public class TraceAdviceListener extends AbstractTraceAdviceListener implements 
             throws Throwable {
         // normalize className later
         threadLocalTraceEntity(classLoader).tree.begin(tracingClassName, tracingMethodName, tracingLineNumber, true);
+  
     }
 
     @Override
